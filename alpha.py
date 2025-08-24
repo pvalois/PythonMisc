@@ -6,12 +6,21 @@ import shutil
 import uuid
 import getopt 
 
-p=Path('.')
+import argparse
+parser = argparse.ArgumentParser(description="Group files by prefix")
 
-# Default settings 
-min_len=1
-max_len=999
-dry=False
+parser.add_argument('-d', '--device', type=str, default='primdev', help='Nom du device')
+parser.add_argument( '-m', '--min', type=int, default=1, help='Taille minimale du préfixe')
+parser.add_argument( '-M', '--max', type=int, default=9999, help='Taille maximale du préfixe')
+parser.add_argument( '-N', '--numeric', action='store_true', default=False, help='Caractères numériques autorisés')
+parser.add_argument( '-s', '--space', action='store_true', default=False, help='Espace autorisé')
+parser.add_argument( '-X', '--extend', type=str, default='', help='Caractères additionnels permis')
+parser.add_argument( '-n', '--dry-run', action='store_true', default=False, help='Dry run')
+parser.add_argument('names', nargs='*', help="Liste de noms à traiter")
+
+args=parser.parse_args()
+
+p=Path('.')
 
 alphabetic="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 numeric="0123456789"
@@ -19,39 +28,24 @@ space=" "
 
 pattern=alphabetic
 
-# Option parsing 
-try:
-  opts, args = getopt.getopt(sys.argv[1:], "mMNsX:n", ["min=", "max=", "numeric", "space", "extend=", "dry"])
-except getopt.GetoptError:
-  myname = os.path.basename(sys.argv[0])
-  print(f'{myname}', end=' ')
-  print('[-m/--min N] [-M/--max N]', end=' ')
-  print('[-N/--numeric] [-s/--space] [-S/--special] [-X/extend <string>]', end=' ')
-  print('[-n/--dry]')
-  sys.exit(2)
+dry=args.dry_run
+min_len = args.min
+max_len = args.max
+if (args.numeric):  pattern=pattern+numeric
+if (args.space): pattern=pattern+space
+pattern=pattern+args.extend
 
-for opt, arg in opts:
-  if opt in ("-m", "--min"): min_len = int(arg)
-  if opt in ("-M", "--max"): max_len = int(arg)
-  if opt in ("-N", "--numerie"): pattern=pattern+numeric
-  if opt in ("-s", "--space"): pattern=pattern+space
-  if opt in ("-X", "--extend"): pattern=pattern+arg
-  if opt in ("-n", "--dry"): 
-    print ("++ DRY RUN")
-    dry = True
+if (dry): print ("++ DRY RUN")
 
-# Initialisation of lists
 liste=[]
 candidates=[]
 
-# Function to cut at first forbidden character
 def clean_prefix(prefix, allowed_chars=alphabetic):
   i=0
   while (i<len(prefix) and prefix[i] in allowed_chars): 
     i+=1
   return prefix[:i]
 
-# Collecting filenames and builting list of all possible prefixes
 for filename in p.iterdir():
 
   if filename.is_dir(): 
@@ -63,19 +57,20 @@ for filename in p.iterdir():
 
   for x in range(min_len, min(max_len, L) + 1):
     raw = fn[0:x]
-    cleaned = clean_prefix(raw, pattern)
-    if (cleaned): liste.append(cleaned.strip())
+    cleaned = clean_prefix(raw, pattern).strip()
+    if (cleaned==fn): continue
+    if (cleaned in liste): continue
+    if (cleaned): liste.append(cleaned)
    
   candidates.append(fn)
 
-# Searching for each prefixes files matching
 cases=sorted(liste,reverse=True)
+
 for case in cases:
   compliants=[x for x in candidates if x.startswith(case)]
   if (len(compliants)>1):
     candidates=[x for x in candidates if x not in compliants]
 
-    # Creating directory, and moving files
     temp_name = '.tmp_sort_'+str(uuid.uuid4())[:8]
     temp_path = Path(temp_name)
     if (not dry): temp_path.mkdir(exist_ok=False)
