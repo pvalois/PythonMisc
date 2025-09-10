@@ -24,7 +24,7 @@ def load_targets_from_config():
                     return targets
             except Exception as e:
                 print(f"Warning: failed to load config {path}: {e}", file=sys.stderr)
-    # fallback default
+    
     return ["google.com"]
 
 def ping_once(host, count):

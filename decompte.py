@@ -2,7 +2,6 @@
 
 import os
 import sys
-import getopt
 from fnmatch import fnmatch
 import argparse
 
