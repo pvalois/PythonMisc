@@ -1,71 +1,80 @@
 #!/usr/bin/env python3
 
+import argparse
 import psutil
-import sys
-import argparse 
-from colorama import Fore, Back, Style, init
+from colorama import Fore, init
 
 init(autoreset=True)
 
-parser = argparse.ArgumentParser(description="Liste des fichiers ouverts")
-parser.add_argument('-p', '--processname', type=str, default="", help='Process name filter, comma separated')
-parser.add_argument('-P', '--pid', type=str, default="", help='Pid filter, comma separated')
-parser.add_argument('-w', '--words', type=str, default="", help='Word filter, comma separated')
-parser.add_argument('-s', '--simple', default=False, action='store_true', help='Output simplifié')
+parser = argparse.ArgumentParser()
+parser.add_argument('-p', '--processname', type=str, default="",
+                    help='Filtre nom de processus (virgule séparé)')
+parser.add_argument('-P', '--pid', type=str, default="",
+                    help='Filtre PID (virgule séparé)')
+parser.add_argument('-w', '--words', type=str, default="",
+                    help='Filtre mots-clés dans les chemins (virgule séparé)')
+parser.add_argument('-s', '--simple', action='store_true',
+                    help='Sortie simplifiée')
 args = parser.parse_args()
 
-pids=args.pid.split(",")
-processname=args.processname.split(",")
-words=args.words.split(",")
-decorum=not args.simple
+pid_filter = set(args.pid.split(',')) if args.pid else set()
+name_filter = [n.lower() for n in args.processname.split(',') if n] if args.processname else []
+word_filter = [w.lower() for w in args.words.split(',') if w] if args.words else []
 
-def opened_file_processes():
-    for proc in psutil.process_iter(['pid', 'name']):
+simple_output = args.simple
+
+def get_open_files():
+    """Yield les processus avec fichiers ouverts, en ignorant ceux inaccessibles."""
+    for _proc in psutil.process_iter(['pid', 'name']):
         try:
-            files = proc.open_files()
+            files = sorted(_proc.open_files())
             if files:
                 yield {
-                    'pid': proc.info['pid'],
-                    'name': proc.info['name'],
+                    'pid': _proc.info['pid'],
+                    'name': _proc.info['name'],
                     'files': files
                 }
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             continue
 
-def filter_by_name(proc_iter, name_list):
-    """Yield only processes whose name matches any string in name_list."""
-    for proc in proc_iter:
-        if any(name.lower() in proc['name'].lower() for name in name_list):
-            yield proc
+def apply_filters(procs):
+    """Applique les filtres PID, nom et mots-clés."""
 
-def filter_by_pid(proc_iter, pid_list):
-    """Yield only processes whose PID is in pid_list (as int or str)."""
-    for proc in proc_iter:
-        if str(proc['pid']) in pid_list or proc['pid'] in pid_list:
-            yield proc
+    for _proc in procs:
 
-def filter_by_path_keywords(proc_iter, keywords):
-    """Yield only processes with at least one file path matching keywords."""
-    for proc in proc_iter:
-        matching_files = [f for f in proc['files'] if any(word.lower() in f.path.lower() for word in keywords)]
-        if matching_files:
-            proc['files'] = matching_files
-            yield proc
+        if pid_filter and str(_proc['pid']) not in pid_filter:
+            continue
 
-all_procs = opened_file_processes()
-filtered = filter_by_name(all_procs, pids)
-filtered = filter_by_name(filtered, processname)
-filtered = filter_by_path_keywords(filtered, words)
+        if name_filter and not any(n in (_proc['name'] or '').lower() for n in name_filter):
+            continue
 
-for proc in filtered:
+        if word_filter:
+            matching_files = [
+                f for f in _proc['files']
+                if any(w in f.path.lower() for w in word_filter)
+            ]
 
-  if decorum:
-    print(f"{Fore.GREEN}{proc['name']} / {Fore.YELLOW}{proc['pid']}")
+            if not matching_files:
+                continue
 
-  for f in proc['files']:
-    if decorum:
-      print(f"  ⤷ {f.path.strip()} {Fore.CYAN}[{f.position}]")
-    else:
-        print(f"{proc['name']:15} {proc['pid']:10}   {f.path.strip()}")
+            _proc['files'] = matching_files
 
-  if decorum: print ("")
+        yield _proc
+
+def print_proc(_proc):
+    """Affiche un processus avec ses fichiers selon le mode simple ou décoré."""
+    if not simple_output:
+        print(f"{Fore.GREEN}{_proc['name']} / {Fore.YELLOW}{_proc['pid']}")
+
+    for f in _proc['files']:
+        if simple_output:
+            print(f"{_proc['name']:15} {_proc['pid']:10}   {f.path.strip()}")
+        else:
+            print(f"  ⤷ {f.path.strip()} {Fore.CYAN}[{f.position}]")
+    if not simple_output:
+        print("")
+
+if __name__ == "__main__":
+    for _proc in apply_filters(get_open_files()):
+        print_proc(_proc)
+

@@ -11,6 +11,7 @@ parser.add_argument('-x', '--exclude', default="", help='Liste de dossiers à ig
 parser.add_argument('-m', '--min', type=int, default=0, help='Print only entries with this minimum of files')
 parser.add_argument('-M', '--max', type=int, default=10000000, help='Print only entries with this maximum of files')
 parser.add_argument('-D', '--countdirs', default=False, action='store_true', help='Compte aussi les dossiers')
+parser.add_argument('-S', '--short', default=False, action='store_true', help='Calcul simple sans total final')
 
 args = parser.parse_args()
 
@@ -67,5 +68,6 @@ for dirp in sorted(a):
     print (f'{length:10} | {dirp}')
   total+=length
 
-print ("")
-print (f'{total:10} | total')
+if (not args.short): 
+  print ("")
+  print (f'{total:10} | total')

@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
-import psutil
+'''
+Script identifiant les processus ouvrant des ports
+'''
+
 import argparse
 from collections import defaultdict
-from rich import print
 from rich.console import Console
 from rich.table import Table
-
-console = Console()
+import psutil
 
 def parse_args():
+    '''
+    Parse les argument de la cli
+    '''
     parser = argparse.ArgumentParser(description="Lister connexions réseau avec PID et cmd")
     parser.add_argument('--sport', help='Ports locaux (comma-separated)')
     parser.add_argument('--dport', help='Ports distants (comma-separated)')
@@ -21,15 +25,20 @@ def parse_args():
     return parser.parse_args()
 
 def matches_filter(value, filter_str):
+    '''
+    filtre les resultats
+    '''
     if not filter_str:
         return True
     terms = [term.strip() for term in filter_str.split(',') if term.strip()]
     return str(value) in terms
 
 def main():
+    '''
+    bloc principal
+    '''
     args = parse_args()
     conns = psutil.net_connections(kind='inet')
-
     grouped = defaultdict(list)
 
     for conn in conns:
@@ -40,10 +49,17 @@ def main():
         dport = str(conn.raddr[1]) if conn.raddr else None
         daddr = conn.raddr[0] if conn.raddr else None
 
-        if not matches_filter(sport, args.sport): continue
-        if not matches_filter(dport, args.dport): continue
-        if not matches_filter(saddr, args.saddr): continue
-        if not matches_filter(daddr, args.daddr): continue
+        if not matches_filter(sport, args.sport):
+            continue
+
+        if not matches_filter(dport, args.dport):
+            continue
+
+        if not matches_filter(saddr, args.saddr):
+            continue
+
+        if not matches_filter(daddr, args.daddr):
+            continue
 
         pid = conn.pid
         cmd = ''
@@ -52,9 +68,14 @@ def main():
                 p = psutil.Process(pid)
                 cmd = ' '.join(p.cmdline())
 
-                if args.pname and not any(p in cmd for p in args.pname): continue
-                if args.pid and not any(int(p)==int(pid) for p in args.pid): continue
-                if args.xname and any(x in cmd for x in args.xname): continue
+                if args.pname and not any(p in cmd for p in args.pname):
+                    continue
+
+                if args.pid and not any(int(p)==int(pid) for p in args.pid):
+                    continue
+
+                if args.xname and any(x in cmd for x in args.xname):
+                    continue
 
             except (psutil.NoSuchProcess, psutil.AccessDenied):
                 cmd = ''
@@ -66,6 +87,8 @@ def main():
             'dport': dport or '-',
             'cmd': cmd
         })
+
+    console = Console()
 
     for pid, entries in sorted((p, e) for p, e in grouped.items() if p is not None):
         cmd = entries[0]['cmd']
@@ -89,4 +112,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
