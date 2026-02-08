@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from PyPDF2 import PdfFileReader, PdfFileWriter
+from PyPDF2 import PdfReader, PdfWriter
 import argparse
 import sys
 
@@ -20,14 +20,14 @@ if __name__ == "__main__":
                         else [int(part)])]))
 
     if (not args.dry_run):
-      pdf_reader = PdfFileReader(open(filename, 'rb'))
-      pdf_writer = PdfFileWriter()
+      pdf_reader = PdfReader(open(filename, 'rb'))
+      pdf_writer = PdfWriter()
 
     for p in pages:
       print ("page",int(p))
       if (not args.dry_run):
-        page = pdf_reader.getPage(int(p)-1)
-        pdf_writer.addPage(page)
+        page = pdf_reader.pages[int(p)-1]
+        pdf_writer.add_page(page)
 
     if  (not args.dry_run):
       with open("selected_pages.pdf",'wb') as out:

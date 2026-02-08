@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
+import sys
 from pathlib import Path
 from colorama import init, Fore, Style
 from tabulate import tabulate
-import sys
 
 init(autoreset=True)
 
@@ -13,7 +13,7 @@ def collect(directory):
         if path.is_file():
             stat = path.stat()
             rel_path = str(path.relative_to(directory))
-            data[rel_path] = (stat.st_size)
+            data[rel_path] = stat.st_size
     return data
 
 def diff_view(src, dst):
@@ -21,9 +21,6 @@ def diff_view(src, dst):
     dst_data = collect(dst)
 
     all_keys = sorted(set(src_data) | set(dst_data))
-
-    # Détermination de la largeur maximale pour l'alignement
-    max_len = max((len(k) for k in all_keys), default=0)
 
     table=[]
     for key in all_keys:
@@ -33,22 +30,22 @@ def diff_view(src, dst):
         left = key if src_meta else ""
         right = key if dst_meta else ""
 
-        if src_meta and not dst_meta: 
-           _src = f"{Fore.RED}{left}"
-           _sep = f"{Fore.RED}-"
-           _dst = ""
-        elif dst_meta and not src_meta: 
-           _src = f""
-           _sep = f"{Fore.GREEN}+"
-           _dst = f"{Fore.GREEN}{right}"
-        elif src_meta != dst_meta:
-           _src = f"{Fore.YELLOW}{left}"
-           _sep = f"{Fore.YELLOW}≠"
-           _dst = f"{Fore.YELLOW}{right}"
-        else:
-            _src = f"{Fore.WHITE}{left}"
-            _sep = f"{Fore.WHITE}|"
-            _dst= f"{Fore.WHITE}{left}"
+        if src_meta and not dst_meta:
+            _src = f"{Fore.RED+Style.BRIGHT}{left}"
+            _sep = f"{Fore.RED+Style.BRIGHT}-"
+            _dst = ""
+        elif dst_meta and not src_meta:
+            _src = ""
+            _sep = f"{Fore.GREEN+Style.BRIGHT}+"
+            _dst = f"{Fore.GREEN+Style.BRIGHT}{right}"
+        elif left != right: 
+            _src = f"{Fore.YELLOW+Style.BRIGHT}{left}"
+            _sep = f"{Fore.YELLOW+Style.BRIGHT}≠"
+            _dst = f"{Fore.YELLOW+Style.BRIGHT}{right}"
+        elif len(left)>0 :
+            _src = f"{Fore.WHITE+Style.BRIGHT}{left}"
+            _sep = f"{Fore.WHITE+Style.BRIGHT}|"
+            _dst= f"{Fore.WHITE+Style.BRIGHT}{right}"
 
         table.append([_src,_sep,_dst])
 
