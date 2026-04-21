@@ -47,7 +47,10 @@ def diff_view(src, dst):
             _sep = f"{Fore.WHITE+Style.BRIGHT}|"
             _dst= f"{Fore.WHITE+Style.BRIGHT}{right}"
 
-        table.append([_src,_sep,_dst])
+        try:
+            table.append([_src,_sep,_dst])
+        except:
+            pass
 
     view = tabulate(table,tablefmt="plain")
     print(view)

@@ -3,21 +3,24 @@
 import httplib2
 from bs4 import BeautifulSoup, SoupStrainer
 import sys
+import argparse
 
 
-try:
-  url=sys.argv[1]
-except:
-  print ("Usage : "+sys.argv[0]+" <url>")
-  sys.exit(0)
+parser = argparse.ArgumentParser()
+parser.add_argument("-i","--stdin",action="store_true", default=False)
+parser.add_argument("--url", type=str, default=None)
+args = parser.parse_args()
 
-http = httplib2.Http()
-user_agent = {'User-agent': 'Mozilla/5.0'}
+url = args.url
 
-if ("http" not in url):
-  url="http://"+url
+if args.stdin:
+    response = sys.stdin.read()
+else:
+    http = httplib2.Http()
+    user_agent = {'User-agent': 'Mozilla/5.0'}
 
-status, response = http.request(url, headers=user_agent)
+    url = args.url if ("http") in args.url else f"http://{url}"
+    status, response = http.request(url, headers=user_agent)
 
 soup = BeautifulSoup(response,"html.parser")
 
@@ -45,6 +48,6 @@ for ank in anchors:
           glob.append(link)
 
 for link in sorted(glob):
-    if not '://' in link:
-       link=url+"/"+link
+    if (args.url and not link.startswith("http")):
+        link=f"{url}{link}"
     print (link)
